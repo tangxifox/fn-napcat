@@ -1,0 +1,22 @@
+#!/bin/bash
+
+LOG_FILE="${TRIM_PKGVAR}/napcat.log"
+
+log_msg() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> ${LOG_FILE}
+}
+
+log_msg "Uninstalling NapCat..."
+
+# Stop service if running
+if [ -f "${TRIM_PKGVAR}/napcat.pid" ]; then
+    pid=$(head -n 1 "${TRIM_PKGVAR}/napcat.pid" | tr -d '[:space:]')
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        kill -TERM "$pid" 2>/dev/null
+        sleep 2
+    fi
+    rm -f "${TRIM_PKGVAR}/napcat.pid"
+fi
+
+log_msg "NapCat uninstalled"
+exit 0

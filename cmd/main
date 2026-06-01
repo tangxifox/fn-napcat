@@ -1,0 +1,147 @@
+#!/bin/bash
+
+export PATH=/var/apps/nodejs_v22/target/bin:$PATH
+
+# Hardcode paths for napcat app
+LOG_FILE="/usr/local/apps/@appdata/napcat/napcat.log"
+PID_FILE="/usr/local/apps/@appdata/napcat/napcat.pid"
+CONFIG_FILE="/usr/local/apps/@appconf/napcat/napcat.json"
+WORK_DIR="/usr/local/apps/@appdata/napcat"
+QQ_DIR="/usr/local/apps/@appcenter/napcat/server"
+
+log_msg() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> ${LOG_FILE}
+}
+
+check_process() {
+    local pid=$1
+    if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+        return 0
+    fi
+    return 1
+}
+
+install_deps() {
+    if ! command -v xvfb-run &> /dev/null; then
+        log_msg "Installing xvfb and xauth..."
+        if command -v apt &> /dev/null; then
+            apt update && apt install -y xvfb xauth
+        elif command -v dnf &> /dev/null; then
+            dnf install -y xorg-x11-server-Xvfb xorg-x11-xauth
+        elif command -v yum &> /dev/null; then
+            yum install -y xorg-x11-server-Xvfb xorg-x11-xauth
+        fi
+    fi
+}
+
+start_app() {
+    if [ -f "$PID_FILE" ]; then
+        pid=$(head -n 1 "$PID_FILE" | tr -d '[:space:]')
+        if check_process "$pid"; then
+            log_msg "NapCat already running with PID: $pid"
+            return 0
+        fi
+        rm -f "$PID_FILE"
+    fi
+
+    # Check if QQ exists
+    if [ ! -f "${QQ_DIR}/qq" ]; then
+        echo "QQ not found at ${QQ_DIR}/qq" > "/tmp/napcat.log.$$"
+        exit 1
+    fi
+
+    # Install dependencies if needed
+    install_deps
+
+    # Create working directories
+    mkdir -p "${WORK_DIR}/config"
+    mkdir -p "${WORK_DIR}/data"
+    mkdir -p "${WORK_DIR}/logs"
+    mkdir -p "${WORK_DIR}/.config/QQ"
+    mkdir -p "${WORK_DIR}/.local/share/QQ"
+
+    # Copy config if not exists
+    if [ ! -f "${WORK_DIR}/config/napcat.json" ] && [ -f "$CONFIG_FILE" ]; then
+        cp "$CONFIG_FILE" "${WORK_DIR}/config/napcat.json"
+    fi
+
+    log_msg "Starting NapCat with QQ..."
+
+    # Export environment
+    export HOME="${WORK_DIR}"
+    export XDG_CONFIG_HOME="${WORK_DIR}/.config"
+    export XDG_DATA_HOME="${WORK_DIR}/.local/share"
+    export LD_LIBRARY_PATH="${QQ_DIR}:${LD_LIBRARY_PATH}"
+
+    cd "${QQ_DIR}"
+
+    # Use xvfb-run to handle display
+    xvfb-run --auto-servernum --server-args='-screen 0 1920x1080x24 -ac +extension GLX +render -noreset' \
+        ./qq --no-sandbox >> ${LOG_FILE} 2>&1 &
+    QQ_PID=$!
+
+    # Wait a moment and check if QQ started
+    sleep 5
+    if check_process "$QQ_PID"; then
+        echo $QQ_PID > "$PID_FILE"
+        log_msg "Started NapCat with PID: $QQ_PID"
+    else
+        log_msg "Failed to start QQ"
+        exit 1
+    fi
+    exit 0
+}
+
+stop_process() {
+    log_msg "Stopping NapCat..."
+    if [ -f "$PID_FILE" ]; then
+        pid=$(head -n 1 "$PID_FILE" | tr -d '[:space:]')
+        if check_process "$pid"; then
+            log_msg "Stopping process PID: $pid"
+            kill -TERM "$pid" 2>/dev/null
+            local count=0
+            while check_process "$pid" && [ $count -lt 10 ]; do
+                sleep 1
+                count=$((count + 1))
+            done
+            if check_process "$pid"; then
+                kill -KILL "$pid" 2>/dev/null
+            fi
+        fi
+        rm -f "$PID_FILE"
+    fi
+
+    # Kill Xvfb if running
+    pkill -x Xvfb 2>/dev/null
+
+    exit 0
+}
+
+status() {
+    if [ -f "$PID_FILE" ]; then
+        pid=$(head -n 1 "$PID_FILE" | tr -d '[:space:]')
+        if check_process "$pid"; then
+            log_msg "NapCat running with PID: $pid"
+            exit 0
+        fi
+        rm -f "$PID_FILE"
+    fi
+    log_msg "NapCat is not running"
+    exit 3
+}
+
+case $1 in
+start)
+    start_app
+    ;;
+stop)
+    stop_process
+    ;;
+status)
+    status
+    ;;
+*)
+    echo "Usage: $0 {start|stop|status}"
+    exit 1
+    ;;
+esac

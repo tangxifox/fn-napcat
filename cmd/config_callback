@@ -1,0 +1,25 @@
+#!/bin/bash
+
+export PATH=/var/apps/nodejs_v22/target/bin:$PATH
+
+LOG_FILE="${TRIM_PKGVAR}/napcat.log"
+CONFIG_FILE="${TRIM_PKGETC}/napcat.json"
+WORK_DIR="${TRIM_PKGVAR}"
+
+log_msg() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> ${LOG_FILE}
+}
+
+log_msg "Configuration changed, updating..."
+
+# Update config in working directory
+if [ -f "${CONFIG_FILE}" ]; then
+    mkdir -p "${WORK_DIR}/config"
+    cp "${CONFIG_FILE}" "${WORK_DIR}/config/napcat.json"
+fi
+
+log_msg "Configuration updated, restarting..."
+${0} stop
+sleep 2
+${0} start
+exit 0

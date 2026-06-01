@@ -1,0 +1,22 @@
+{
+    "data-share": {
+        "shares": [
+            {
+                "name": "napcat",
+                "permission": {
+                    "rw": [
+                        "napcat"
+                    ]
+                }
+            },
+            {
+                "name": "napcat/data",
+                "permission": {
+                    "rw": [
+                        "napcat"
+                    ]
+                }
+            }
+        ]
+    }
+}

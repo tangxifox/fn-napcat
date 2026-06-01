@@ -1,0 +1,20 @@
+appname=napcat
+version=4.18.4
+display_name=NapCatQQ
+desc=NapCatQQ - 基于 NTQQ 的 QQ 机器人框架，本地运行无需 Docker，支持 OneBot v11 协议<br>内置 QQ 3.2.23-44343 和 NapCat Shell 4.18.4<br>项目地址: <a target="_blank" href="https://github.com/NapNeko/NapCatQQ">https://github.com/NapNeko/NapCatQQ</a>
+arch=x86_64
+source=thirdparty
+maintainer=tangxifox
+maintainer_url=https://github.com/tangxifox
+distributor=tangxifox
+distributor_url=https://github.com/tangxifox
+desktop_uidir=ui
+desktop_applaunchname=napcat.Application
+service_port=6099
+checkport=true
+install_type=root
+install_dep_apps=nodejs_v22
+ctl_stop=true
+disable_authorization_path=true
+changelog=首次发布
+platform=

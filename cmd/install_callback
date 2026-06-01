@@ -1,0 +1,61 @@
+#!/bin/bash
+
+export PATH=/var/apps/nodejs_v22/target/bin:$PATH
+
+LOG_FILE="${TRIM_PKGVAR}/napcat.log"
+CONFIG_FILE="${TRIM_PKGETC}/napcat.json"
+WORK_DIR="${TRIM_PKGVAR}"
+
+log_msg() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> ${LOG_FILE}
+}
+
+log_msg "Installation completed, setting up NapCat..."
+
+# Create necessary directories
+mkdir -p "${WORK_DIR}/config"
+mkdir -p "${WORK_DIR}/data"
+mkdir -p "${WORK_DIR}/logs"
+mkdir -p "${WORK_DIR}/.config/QQ"
+mkdir -p "${WORK_DIR}/.local/share/QQ"
+
+# Install xvfb and xauth dependencies
+log_msg "Installing dependencies..."
+if command -v apt &> /dev/null; then
+    apt update && apt install -y xvfb xauth
+elif command -v dnf &> /dev/null; then
+    dnf install -y xorg-x11-server-Xvfb xorg-x11-xauth
+elif command -v yum &> /dev/null; then
+    yum install -y xorg-x11-server-Xvfb xorg-x11-xauth
+fi
+
+# Create default config
+if [ ! -f "${CONFIG_FILE}" ]; then
+    cat > "${CONFIG_FILE}" << 'EOF'
+{
+  "fileLog": true,
+  "consoleLog": true,
+  "fileLogLevel": "debug",
+  "consoleLogLevel": "info",
+  "packetBackend": "auto",
+  "packetServer": "",
+  "o3HookMode": 1,
+  "autoTimeSync": true,
+  "bypass": {
+    "hook": true,
+    "window": true,
+    "module": true,
+    "process": true,
+    "container": true,
+    "js": true
+  }
+}
+EOF
+    log_msg "Created default config"
+fi
+
+# Copy config to working directory
+cp "${CONFIG_FILE}" "${WORK_DIR}/config/napcat.json"
+
+log_msg "NapCat installation completed"
+exit 0
